@@ -2275,14 +2275,21 @@ class AnimationParser {
     return tracks
   }
 
-  generateVectorTrack = (modelName, curves, initialValue, type) => {
+  generateVectorTrack = (modelName: string, curves, initialValue, type: string) => {
     const times = this.getTimesForAllAxes(curves)
     const values = this.getKeyframeTrackValues(times, curves, initialValue)
 
     return new VectorKeyframeTrack(modelName + '.' + type, times, values)
   }
 
-  generateRotationTrack = (modelName, curves, initialValue, preRotation, postRotation, eulerOrder) => {
+  generateRotationTrack = (
+    modelName,
+    curves,
+    initialValue,
+    preRotation: Quaternion,
+    postRotation: Quaternion,
+    eulerOrder,
+  ) => {
     if (curves.x !== undefined) {
       this.interpolateRotations(curves.x)
       curves.x.values = curves.x.values.map(MathUtils.degToRad)
@@ -2320,7 +2327,7 @@ class AnimationParser {
     const quaternion = new Quaternion()
     const euler = new Euler()
 
-    const quaternionValues = []
+    const quaternionValues: number[] = []
 
     for (let i = 0; i < values.length; i += 3) {
       euler.set(values[i], values[i + 1], values[i + 2], eulerOrder)
@@ -2336,7 +2343,7 @@ class AnimationParser {
     return new QuaternionKeyframeTrack(modelName + '.quaternion', times, quaternionValues)
   }
 
-  generateMorphTrack = (rawTracks) => {
+  generateMorphTrack = (rawTracks): NumberKeyframeTrack => {
     const curves = rawTracks.DeformPercent.curves.morph
     const values = curves.values.map((val) => val / 100)
 
@@ -2355,7 +2362,7 @@ class AnimationParser {
    * @param curves
    * @returns
    */
-  getTimesForAllAxes = (curves) => {
+  getTimesForAllAxes = (curves): any[] => {
     let times = []
 
     // first join together the times for each axis, if defined
@@ -2390,9 +2397,9 @@ class AnimationParser {
 
     const values = []
 
-    const xIndex = -1
-    const yIndex = -1
-    const zIndex = -1
+    let xIndex = -1
+    let yIndex = -1
+    let zIndex = -1
 
     times.forEach((time) => {
       if (curves.x) xIndex = curves.x.times.indexOf(time)
@@ -2712,7 +2719,7 @@ class BinaryParser {
   /**
    * @param buffer
    */
-  parse = (buffer) => {
+  parse = (buffer: ArrayBufferLike): FBXTree => {
     const reader = new BinaryReader(buffer)
     reader.skip(23) // skip magic 23 bytes
 
@@ -2725,7 +2732,7 @@ class BinaryParser {
     const allNodes = new FBXTree()
 
     while (!this.endOfContent(reader)) {
-      var node = this.parseNode(reader, version)
+      const node = this.parseNode(reader, version)
       if (node !== null) allNodes.add(node.name, node)
     }
 
@@ -2736,7 +2743,7 @@ class BinaryParser {
    * Check if reader has reached the end of content.
    * @param reader
    */
-  endOfContent = (reader) => {
+  endOfContent = (reader): boolean => {
     // footer size: 160bytes + 16-byte alignment padding
     // - 16bytes: magic
     // - padding til 16-byte alignment (at least 1byte?)
@@ -2758,8 +2765,8 @@ class BinaryParser {
    * @param version
    * @returns
    */
-  parseNode = (reader, version) => {
-    const node = {}
+  parseNode = (reader, version: number) => {
+    const node: any = {}
 
     // The first three data sizes depends on version.
     const endOffset = version >= 7500 ? reader.getUint64() : reader.getUint32()
@@ -2809,7 +2816,7 @@ class BinaryParser {
    * @param node
    * @param subNode
    */
-  parseSubNode = (name, node, subNode) => {
+  parseSubNode = (name: string, node, subNode): void => {
     // special case: child node is single property
     if (subNode.singleProperty === true) {
       const value = subNode.propertyList[0]
@@ -2841,8 +2848,8 @@ class BinaryParser {
         node[key] = subNode[key]
       })
     } else if (name === 'Properties70' && subNode.name === 'P') {
-      const innerPropName = subNode.propertyList[0]
-      const innerPropType1 = subNode.propertyList[1]
+      let innerPropName = subNode.propertyList[0]
+      let innerPropType1 = subNode.propertyList[1]
       const innerPropType2 = subNode.propertyList[2]
       const innerPropFlag = subNode.propertyList[3]
       let innerPropValue
@@ -2913,12 +2920,10 @@ class BinaryParser {
         return reader.getInt64()
 
       case 'R':
-        var length = reader.getUint32()
-        return reader.getArrayBuffer(length)
+        return reader.getArrayBuffer(reader.getUint32())
 
       case 'S':
-        var length = reader.getUint32()
-        return reader.getString(length)
+        return reader.getString(reader.getUint32())
 
       case 'Y':
         return reader.getInt16()
@@ -2953,8 +2958,8 @@ class BinaryParser {
           }
         }
 
-        var data = unzlibSync(new Uint8Array(reader.getArrayBuffer(compressedLength))) // eslint-disable-line no-undef
-        var reader2 = new BinaryReader(data.buffer)
+        const data = unzlibSync(new Uint8Array(reader.getArrayBuffer(compressedLength))) // eslint-disable-line no-undef
+        const reader2 = new BinaryReader(data.buffer)
 
         switch (type) {
           case 'b':
@@ -2985,16 +2990,16 @@ class BinaryReader {
   littleEndian: boolean
   offset = 0
 
-  constructor(buffer: ArrayBufferLike, littleEndian) {
+  constructor(buffer: ArrayBufferLike, littleEndian?: boolean) {
     this.dv = new DataView(buffer)
     this.littleEndian = littleEndian !== undefined ? littleEndian : true
   }
 
-  getOffset = () => this.offset
+  getOffset = (): number => this.offset
 
-  size = () => this.dv.buffer.byteLength
+  size = (): number => this.dv.buffer.byteLength
 
-  skip = (length) => {
+  skip = (length: number): void => {
     this.offset += length
   }
 
@@ -3003,9 +3008,9 @@ class BinaryReader {
    * true: 1 or 'Y'(=0x59), false: 0 or 'T'(=0x54)
    * then sees LSB.
    */
-  getBoolean = () => (this.getUint8() & 1) === 1
+  getBoolean = (): boolean => (this.getUint8() & 1) === 1
 
-  getBooleanArray = (size) => {
+  getBooleanArray = (size: number): boolean[] => {
     const a = []
 
     for (let i = 0; i < size; i++) {
@@ -3015,25 +3020,25 @@ class BinaryReader {
     return a
   }
 
-  getUint8 = () => {
+  getUint8 = (): number => {
     const value = this.dv.getUint8(this.offset)
     this.offset += 1
     return value
   }
 
-  getInt16 = () => {
+  getInt16 = (): number => {
     const value = this.dv.getInt16(this.offset, this.littleEndian)
     this.offset += 2
     return value
   }
 
-  getInt32 = () => {
+  getInt32 = (): number => {
     const value = this.dv.getInt32(this.offset, this.littleEndian)
     this.offset += 4
     return value
   }
 
-  getInt32Array = (size) => {
+  getInt32Array = (size: number): number[] => {
     const a = []
 
     for (let i = 0; i < size; i++) {
@@ -3043,7 +3048,7 @@ class BinaryReader {
     return a
   }
 
-  getUint32 = () => {
+  getUint32 = (): number => {
     const value = this.dv.getUint32(this.offset, this.littleEndian)
     this.offset += 4
     return value
@@ -3057,7 +3062,7 @@ class BinaryReader {
    * TODO: safely handle 64-bit integer
    * @returns number
    */
-  getInt64 = () => {
+  getInt64 = (): number => {
     let low: number
     let high: number
 
@@ -3084,8 +3089,8 @@ class BinaryReader {
     return high * 0x100000000 + low
   }
 
-  getInt64Array = (size) => {
-    const a = []
+  getInt64Array = (size: number): number[] => {
+    const a: number[] = []
 
     for (let i = 0; i < size; i++) {
       a.push(this.getInt64())
@@ -3095,7 +3100,7 @@ class BinaryReader {
   }
 
   /** Note: see getInt64() comment */
-  getUint64 = () => {
+  getUint64 = (): number => {
     let low: number
     let high: number
 
@@ -3110,13 +3115,13 @@ class BinaryReader {
     return high * 0x100000000 + low
   }
 
-  getFloat32 = () => {
+  getFloat32 = (): number => {
     const value = this.dv.getFloat32(this.offset, this.littleEndian)
     this.offset += 4
     return value
   }
 
-  getFloat32Array = (size) => {
+  getFloat32Array = (size: number): number[] => {
     const a = []
 
     for (let i = 0; i < size; i++) {
@@ -3126,14 +3131,17 @@ class BinaryReader {
     return a
   }
 
-  getFloat64 = () => {
+  getFloat64 = (): number => {
     const value = this.dv.getFloat64(this.offset, this.littleEndian)
     this.offset += 8
     return value
   }
 
-  getFloat64Array = (size) => {
-    const a = []
+  /**
+   * @param size length of new array
+   */
+  getFloat64Array = (size: number): number[] => {
+    const a: number[] = []
 
     for (let i = 0; i < size; i++) {
       a.push(this.getFloat64())
@@ -3142,15 +3150,15 @@ class BinaryReader {
     return a
   }
 
-  getArrayBuffer = (size: number) => {
+  getArrayBuffer = (size: number): ArrayBuffer => {
     const value = this.dv.buffer.slice(this.offset, this.offset + size)
     this.offset += size
     return value
   }
 
-  getString = (size) => {
+  getString = (size: number): string => {
     // note: safari 9 doesn't support Uint8Array.indexOf; create intermediate array instead
-    const a = []
+    let a: number[] = []
 
     for (let i = 0; i < size; i++) {
       a[i] = this.getUint8()
@@ -3481,12 +3489,15 @@ function generateTransform(transformData): Matrix4 {
   return lTransform
 }
 
-// Returns the three.js intrinsic Euler order corresponding to FBX extrinsic Euler order
-// ref: http://help.autodesk.com/view/FBX/2017/ENU/?guid=__cpp_ref_class_fbx_euler_html
-function getEulerOrder(order) {
+/**
+ * @link http://help.autodesk.com/view/FBX/2017/ENU/?guid=__cpp_ref_class_fbx_euler_html
+ * @param order
+ * @returns the three.js intrinsic Euler order corresponding to FBX extrinsic Euler order
+ */
+function getEulerOrder(order: number): number {
   order = order || 0
 
-  var enums = [
+  const enums = [
     'ZYX', // -> XYZ extrinsic
     'YZX', // -> XZY extrinsic
     'XZY', // -> YZX extrinsic
@@ -3504,17 +3515,18 @@ function getEulerOrder(order) {
   return enums[order]
 }
 
-// Parses comma separated list of numbers and returns them an array.
-// Used internally by the TextParser
-function parseNumberArray(value) {
-  var array = value.split(',').map(function (val) {
-    return parseFloat(val)
-  })
-
+/**
+ * Parses comma separated list of numbers and returns them an array.
+ * Used internally by the TextParser
+ * @param value
+ * @returns
+ */
+function parseNumberArray(value: string): number[] {
+  const array = value.split(',').map((val) => parseFloat(val))
   return array
 }
 
-function convertArrayBufferToString(buffer, from, to) {
+function convertArrayBufferToString(buffer: ArrayBuffer, from, to) {
   if (from === undefined) from = 0
   if (to === undefined) to = buffer.byteLength
 
@@ -3535,7 +3547,13 @@ function slice(a, b, from, to) {
   return a
 }
 
-// inject array a2 into array a1 at index
+/**
+ * inject array a2 into array a1 at index
+ * @param a1
+ * @param index
+ * @param a2
+ * @returns
+ */
 function inject(a1, index, a2) {
   return a1.slice(0, index).concat(a2).concat(a1.slice(index))
 }
